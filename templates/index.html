@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Asian Hornet Sightings in Switzerland</title>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <style>
+        html, body {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            width: 100%;
+            overflow: hidden;
+        }
+        body {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            width: 100vw;
+            background-color: #f5f5f5;
+        }
+        .container-fluid {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            padding: 15px;
+            min-height: 0;
+            height: 100%;
+        }
+        .header-section {
+            flex-shrink: 0;
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .filter-panel {
+            width: 300px;
+            min-width: 300px;
+            overflow-y: auto;
+            padding: 15px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .chart-container {
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+            min-height: 500px;
+            height: calc(100vh - 200px);
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            position: relative;
+            padding: 0;
+            margin: 0;
+        }
+        .chart-container .card-body {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            padding: 0 !important;
+            margin: 0 !important;
+            overflow: hidden;
+        }
+        #chart {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            width: 100% !important;
+            height: 100% !important;
+            min-height: 500px;
+            margin: 0;
+            padding: 0;
+        }
+        .main-svg {
+            width: 100% !important;
+            height: 100% !important;
+        }
+        .row.flex-grow-1 {
+            min-height: 0;
+            flex: 1;
+            height: 100%;
+        }
+        
+        /* Ensure Plotly chart fills its container */
+        .js-plotly-plot {
+            width: 100% !important;
+            height: 100% !important;
+            min-height: 0 !important;
+        }
+        
+        .main-svg {
+            width: 100% !important;
+            height: 100% !important;
+        }
+        .card-header {
+            flex-shrink: 0;
+        }
+        .card-header {
+            background-color: #0d6efd;
+            color: white;
+            font-weight: 600;
+            border-radius: 10px 10px 0 0 !important;
+        }
+        .stat-card {
+            background: linear-gradient(135deg, #0d6efd, #0dcaf0);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            margin-bottom: 0;
+        }
+        .stat-number {
+            font-size: 2.5rem;
+            font-weight: bold;
+        }
+        .stat-label {
+            font-size: 1rem;
+            opacity: 0.9;
+        }
+        .form-label {
+            font-weight: 500;
+        }
+        .btn-primary {
+            background-color: #0d6efd;
+            border: none;
+            padding: 8px 20px;
+        }
+        .btn-primary:hover {
+            background-color: #0b5ed7;
+        }
+        .container {
+            min-height: 90vh;
+            height: 90vh;
+            max-height: 90vh;
+            display: flex;
+            flex-direction: column;
+            padding: 1rem;
+            margin: 1vh auto;
+            width: 99%;
+            max-width: 100%;
+        }
+        
+        .header-section {
+            margin-bottom: 0.5rem;
+            padding: 0.25rem 0;
+        }
+        
+        .header-section h1 {
+            margin: 0;
+            font-size: 1.5rem;
+            line-height: 1.2;
+        }
+        
+        .header-section p {
+            margin: 0.25rem 0 0 0;
+            font-size: 0.9rem;
+            color: #6c757d;
+        }
+        
+        .row {
+            flex: 1;
+            margin: 0;
+            height: 100%;
+            min-height: 0; /* Fix for Firefox */
+            display: flex;
+            flex-wrap: nowrap;
+            gap: 1rem;
+        }
+        
+        /* Chart styles consolidated above */
+        #spinner {
+            display: none;
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(255, 255, 255, 0.8);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        
+        #spinner.show {
+            display: flex;
+        }
+        
+        #spinner.visible {
+            opacity: 1;
+        }
+        .js-plotly-plot {
+            width: 100% !important;
+            height: 100% !important;
+        }
+        .filter-section {
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid py-2 h-100">
+        <div class="row header-section mb-3" style="height:auto !important;flex:none !important;">
+            <div class="col-12">
+                <h1>Asian Hornet Sightings in Switzerland</h1>
+                <p class="mb-0">Analyze and visualize Asian hornet occurrences</p>
+            </div>
+        </div>
+
+        <div class="row flex-grow-1" style="min-height: 0;">
+            <!-- Filters Column -->
+            <div class="col-md-3 col-lg-2 d-flex flex-column" style="min-height: 0;">
+                <div class="card h-100">
+                    <div class="card-header">
+                        <i class="bi bi-funnel"></i> Filter Options
+                    </div>
+                    <div class="card-body overflow-auto">
+                        <form id="filterForm">
+                            <div class="mb-3">
+                                <label class="form-label">Sighting Type</label>
+                                <select class="form-select" id="typeSelect" multiple>
+                                    <option value="all" selected>All Types</option>
+                                    {% for type in unique_types %}
+                                        <option value="{{ type }}">{{ type }}</option>
+                                    {% endfor %}
+                                </select>
+                                <div class="form-text small">Select one or more types (Ctrl+Click to select multiple)</div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label">Canton</label>
+                                <select class="form-select" id="cantonSelect" multiple>
+                                    <option value="all" selected>All Cantons</option>
+                                    {% for canton in unique_cantons %}
+                                        <option value="{{ canton }}">{{ canton }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label">Date Range</label>
+                                <div class="input-group mb-2">
+                                    <span class="input-group-text">From</span>
+                                    <input type="date" class="form-control" id="startDate" value="{{ min_date }}">
+                                </div>
+                                <div class="input-group">
+                                    <span class="input-group-text">To</span>
+                                    <input type="date" class="form-control" id="endDate" value="{{ max_date }}">
+                                </div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label">Time Unit</label>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="timeUnit" id="dayRadio" value="day">
+                                    <label class="form-check-label" for="dayRadio">Daily</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="timeUnit" id="monthRadio" value="month" checked>
+                                    <label class="form-check-label" for="monthRadio">Monthly</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="timeUnit" id="yearRadio" value="year">
+                                    <label class="form-check-label" for="yearRadio">Yearly</label>
+                                </div>
+                                <div class="form-check mt-2" id="showMonthsContainer" style="display: none;">
+                                    <input class="form-check-input" type="checkbox" id="showMonthsCheckbox">
+                                    <label class="form-check-label" for="showMonthsCheckbox">Show month names</label>
+                                </div>
+                            </div>
+
+                            <button type="submit" class="btn btn-primary w-100">
+                                <i class="bi bi-arrow-repeat"></i> Update Chart
+                            </button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Stats Card -->
+                <div class="stat-card mt-3">
+                    <div class="stat-number" id="totalSightings">-</div>
+                    <div class="stat-label">Total Sightings</div>
+                </div>
+            </div>
+
+            <!-- Chart Column -->
+            <div class="col-md-9 col-lg-10 d-flex flex-column" style="min-height: 0; height: 100%;">
+                <div class="card h-100 d-flex flex-column">
+                    <div class="card-header">
+                        <i class="bi bi-bar-chart-line"></i> Sightings Over Time
+                    </div>
+                    <div class="card-body p-0 flex-grow-1" style="min-height: 0; position: relative;">
+                        <div id="chart" style="position: absolute; top: 0; left: 0; right: 0; bottom: 0;">
+                            <div id="spinner" style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.8); z-index: 1000;">
+                                <div class="spinner-border text-primary" role="status">
+                                    <span class="visually-hidden">Loading...</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialize form elements
+            const form = document.getElementById('filterForm');
+            const typeSelect = document.getElementById('typeSelect');
+            const cantonSelect = document.getElementById('cantonSelect');
+            const startDate = document.getElementById('startDate');
+            const endDate = document.getElementById('endDate');
+            const timeUnitRadios = document.getElementsByName('timeUnit');
+            const showMonthsCheckbox = document.getElementById('showMonthsCheckbox');
+            const showMonthsContainer = document.getElementById('showMonthsContainer');
+            const chartDiv = document.getElementById('chart');
+            const totalSightingsElement = document.getElementById('totalSightings');
+
+            // Set initial dates
+            startDate.min = '{{ min_date }}';
+            startDate.max = '{{ max_date }}';
+            endDate.min = '{{ min_date }}';
+            endDate.max = '{{ max_date }}';
+
+            // Show/hide months checkbox based on time unit selection
+            function updateMonthsVisibility() {
+                const isMonthly = document.querySelector('input[name="timeUnit"]:checked').value === 'month';
+                showMonthsContainer.style.display = isMonthly ? 'block' : 'none';
+            }
+
+
+            // Handle form submission
+            form.addEventListener('submit', function(e) {
+                e.preventDefault();
+                updateChart();
+            });
+
+
+            // Update chart when time unit changes
+            timeUnitRadios.forEach(radio => {
+                radio.addEventListener('change', function() {
+                    updateMonthsVisibility();
+                    updateChart();
+                });
+            });
+
+            // Initial update of months visibility
+            updateMonthsVisibility();
+
+            // Function to update the chart
+            function updateChart() {
+                const spinner = document.getElementById('spinner');
+                const chartContainer = document.getElementById('chart');
+                const parentContainer = chartContainer.parentElement;
+                
+                // Show spinner and hide chart during update
+                spinner.style.display = 'flex';
+                spinner.style.opacity = '1';
+                chartContainer.style.visibility = 'hidden';
+                
+                // Ensure parent container has explicit height
+                parentContainer.style.height = '100%';
+                parentContainer.style.minHeight = '500px';
+                
+                // Set chart container height explicitly
+                const containerHeight = parentContainer.offsetHeight;
+                chartContainer.style.height = containerHeight + 'px';
+                chartContainer.style.minHeight = '500px';
+                
+                const selectedTypes = Array.from(document.querySelectorAll('#typeSelect option:checked')).map(opt => opt.value);
+                const selectedCantons = Array.from(document.querySelectorAll('#cantonSelect option:checked')).map(opt => opt.value);
+                const startDateValue = document.getElementById('startDate').value;
+                const endDateValue = document.getElementById('endDate').value;
+                const timeUnit = document.querySelector('input[name="timeUnit"]:checked').value;
+                const showMonths = document.getElementById('showMonthsCheckbox').checked;
+                
+                // Hide any previous error messages
+                const errorElement = document.getElementById('error-message');
+                if (errorElement) errorElement.style.display = 'none';
+                
+                // Add a small delay to prevent spinner flicker on fast responses
+                const showSpinnerTimeout = setTimeout(() => {
+                    spinner.style.opacity = '1';
+                }, 50);
+                
+                fetch('/get_chart_data', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        types: selectedTypes,
+                        dateRange: [startDateValue, endDateValue],
+                        timeUnit: timeUnit,
+                        canton: selectedCantons,
+                        showMonths: showMonths
+                    })
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    clearTimeout(showSpinnerTimeout);
+                    spinner.style.opacity = '0';
+                    
+                    // Update total sightings
+                    document.getElementById('totalSightings').textContent = data.total_sightings.toLocaleString();
+                    
+                    // Update the chart with explicit dimensions
+                    const updateChart = () => {
+                        // Get current container dimensions
+                        const containerWidth = chartContainer.offsetWidth;
+                        const containerHeight = chartContainer.offsetHeight;
+                        
+                        // Update layout with explicit dimensions
+                        const layout = {
+                            ...data.chart.layout,
+                            width: containerWidth,
+                            height: containerHeight,
+                            margin: {
+                                t: 30,
+                                l: 60,
+                                r: 30,
+                                b: 80,
+                                pad: 0
+                            }
+                        };
+                        
+                        const update = typeof chart !== 'undefined' 
+                            ? Plotly.react('chart', data.chart.data, layout, {responsive: true})
+                            : Plotly.newPlot('chart', data.chart.data, layout, {responsive: true});
+                        
+                        return update.then(() => {
+                            chart = update; // Store the chart instance
+                            chartContainer.style.visibility = 'visible';
+                            return true;
+                        });
+                    };
+                    
+                    // Initial update with a small delay to ensure container is ready
+                    return new Promise(resolve => {
+                        setTimeout(() => {
+                            updateChart().then(resolve);
+                        }, 50);
+                    });
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    clearTimeout(showSpinnerTimeout);
+                    spinner.style.display = 'none';
+                    
+                    // Show error message to user
+                    if (!errorElement) {
+                        const errorDiv = document.createElement('div');
+                        errorDiv.id = 'error-message';
+                        errorDiv.className = 'alert alert-danger mt-3';
+                        errorDiv.textContent = 'Error loading chart data. Please try again.';
+                        document.querySelector('.chart-container').appendChild(errorDiv);
+                    } else {
+                        errorElement.style.display = 'block';
+                    }
+                })
+                .finally(() => {
+                    // Ensure spinner is always hidden after operation completes
+                    setTimeout(() => {
+                        spinner.style.display = 'none';
+                        spinner.style.opacity = '1';
+                    }, 300);
+                });
+            }
+
+
+            // Track if we're currently updating to prevent loops
+            let isUpdating = false;
+            let lastWidth = 0;
+            let lastHeight = 0;
+            const RESIZE_THRESHOLD = 5; // pixels
+
+            // Function to update chart height
+            function updateChartHeight() {
+                if (isUpdating || typeof chart === 'undefined') return;
+                
+                const chartContainer = document.querySelector('#chart');
+                if (!chartContainer) return;
+                
+                // Get the parent container's dimensions
+                const parent = chartContainer.parentElement;
+                const containerHeight = parent.offsetHeight;
+                const containerWidth = parent.offsetWidth;
+                
+                // Only update if size changed significantly
+                if (Math.abs(containerWidth - lastWidth) < RESIZE_THRESHOLD && 
+                    Math.abs(containerHeight - lastHeight) < RESIZE_THRESHOLD) {
+                    return;
+                }
+                
+                lastWidth = containerWidth;
+                lastHeight = containerHeight;
+                isUpdating = true;
+                
+                // Ensure the chart container has explicit dimensions
+                chartContainer.style.height = '100%';
+                chartContainer.style.width = '100%';
+                
+                // Force update the chart's container height
+                const plotEl = chartContainer.querySelector('.js-plotly-plot');
+                if (plotEl) {
+                    plotEl.style.height = '100%';
+                    plotEl.style.width = '100%';
+                    plotEl.style.position = 'absolute';
+                    plotEl.style.top = '0';
+                    plotEl.style.left = '0';
+                    plotEl.style.right = '0';
+                    plotEl.style.bottom = '0';
+                }
+                
+                // Update the chart layout with new dimensions
+                Plotly.relayout(chart, {
+                    width: containerWidth,
+                    height: containerHeight,
+                    autosize: false,
+                    margin: { 
+                        t: 30, 
+                        l: 60, 
+                        r: 30, 
+                        b: 80,
+                        pad: 0,
+                        autoexpand: false
+                    }
+                }).then(() => {
+                    // Force a redraw to ensure the chart fills the container
+                    Plotly.Plots.resize(chart);
+                    
+                    // Reset the updating flag after a small delay
+                    setTimeout(() => {
+                        isUpdating = false;
+                        // One more resize to be sure
+                        if (chartContainer.offsetHeight > 0) {
+                            Plotly.relayout(chart, {
+                                height: chartContainer.offsetHeight,
+                                width: chartContainer.offsetWidth
+                            });
+                        }
+                    }, 50);
+                }).catch(() => {
+                    isUpdating = false;
+                });
+            }
+            
+            // Initial chart load
+            updateChart();
+            
+            // Debounce function for resize events
+            function debounce(func, wait) {
+                let timeout;
+                return function() {
+                    const context = this;
+                    const args = arguments;
+                    clearTimeout(timeout);
+                    timeout = setTimeout(() => {
+                        func.apply(context, args);
+                    }, wait);
+                };
+            }
+            
+            // Handle window resize with debounce and throttling
+            const debouncedResize = debounce(updateChartHeight, 150);
+            
+            // Add event listeners
+            window.addEventListener('resize', debouncedResize, { passive: true });
+            
+            // Initial setup
+            document.addEventListener('DOMContentLoaded', () => {
+                // Set initial chart container height
+                const chartContainer = document.getElementById('chart');
+                const parent = chartContainer.parentElement;
+                chartContainer.style.height = parent.offsetHeight + 'px';
+                
+                // Initial update after a small delay to ensure DOM is ready
+                setTimeout(() => {
+                    updateChartHeight();
+                    
+                    // Additional updates to ensure proper sizing
+                    setTimeout(updateChartHeight, 100);
+                    
+                    // Final update after everything is settled
+                    setTimeout(updateChartHeight, 500);
+                }, 50);
+                
+                // Also update when the window finishes loading all resources
+                window.addEventListener('load', updateChartHeight);
+            });
+        });
+    </script>
+</body>
+</html>
